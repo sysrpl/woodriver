@@ -1,0 +1,220 @@
+<style>
+
+#raffle-layout.desktop .details {
+	float: left; 
+	width: 60%
+}
+
+#raffle-layout.desktop .checkout {
+	float: left;
+	width: 30%;
+	margin-left: 10%
+}
+
+#pay-details {
+	margin-top: 2em;
+}
+
+#raffle-layout.mobile #pay-details {
+	width: 60%;
+	margin-left: 20%;
+}
+
+#pay-details .kind {
+	float: left;
+	clear: both;
+}
+
+#pay-details .number {
+	float: right;
+	font-weight: 900;
+}
+
+</style>
+
+<h2>Raffle Checkout</h2>
+
+<div id="raffle-layout" class="desktop">
+
+	<div class="details">
+
+		<div>You are purchasing <span id="buying"></span>. Please provide us with the following information below to complete your checkout.</div>
+		<br>
+		<form id="details">
+		<label for="firstname">First name:</label><br>
+		<input class="raffle" type="text" id="firstname" style="width: 100%"><br>
+
+		<label for="lastname">Last name:</label><br>
+		<input class="raffle" type="text" id="lastname" style="width: 100%"><br>
+
+		<label for="email">Email address:</label><br>
+		<input class="raffle" type="text" id="email" style="width: 100%"><br>
+
+		 <label for="phone">Phone number (optional):</label><br>
+		<input class="raffle" type="text" id="phone" style="width: 100%; margin-bottom: 4em"><br>
+		</form>
+	</div>
+
+	<div class="checkout">
+		<center>
+			<div><strong>Payment</strong></div>
+		</center> 
+
+		<div id="pay-details">
+			<span class="kind">Tickets:</span><span class="number ticket"></span><br>
+			<span class="kind">Amount:</span><span class="number amount"></span><br>
+		</div>
+
+		<center>
+			<div style="margin-top: 2em; text-align: left;">By continuing you agree to our <a href="https://woodriverstudio.com/terms-and-conditions/" target="_blank">Terms and Conditions</a>, <a href="https://woodriverstudio.com/official-rules/" target="_blank">Official Rules</a>, and our <a href="https://woodriverstudio.com/privacy-policy/" target="_blank">Privacy Policy</a>.</div>
+			<div id="pay-area" style="margin-top: 1em;">
+				<div id="pay-blank" style="cursor: pointer; border-radius: 3em; height: 3em; line-height: 3em; background: gray;color: white;">Payment Details Incomplete</div>
+				<div id="pay-pal"></div>
+			</div>
+		</center>
+	</div> 
+
+</div> 
+
+<script src="https://www.paypal.com/sdk/js?client-id=AVXiSiwKjWuLeBJ3Y6AYNoekGgGtuszsc3Z5xjLGG28X3yNe1q4h4QyjNdyONVxNi1uQnCmk0p8psQXB&currency=USD&components=buttons,funding-eligibility"></script>
+<script>
+
+let isValid = false;
+let tickets = 250;
+let cost = 50;
+
+function getFirstName() {
+    return document.querySelector("#firstname").value.trim().slice(0, 40);
+}
+
+function getLastName() {
+    return document.querySelector("#lastname").value.trim().slice(0, 40);
+}
+
+function getEmail() {
+    return document.querySelector("#email").value.trim().slice(0, 40);
+}
+
+function getPhone() {
+    return document.querySelector("#phone").value.trim().replace(/[^0-9]/g, '').slice(0, 10);
+}
+
+function getQuantity() {
+    return tickets.toString();
+}
+
+function getDescription() {
+    return getQuantity() + " wood river raffle ticket(s)";
+}
+
+function getCustom() {
+    return "raffle2024`~" + getQuantity() + "`~" + getEmail() + "`~" + getFirstName() + "`~" + getLastName() + "~" + getPhone();
+}
+
+function checkValid() {
+    let check = false;
+    let item = document.querySelector("#firstname");
+    check = /^[a-zA-Z\s]+$/.test(item.value);
+    item = document.querySelector("#lastname");
+    check = check && /^[a-zA-Z\s]+$/.test(item.value);
+    item = document.querySelector("#email");
+    check = check && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item.value);
+    
+    if (check != isValid) {
+        isValid = check;
+        if (isValid)
+            enablePayment();
+        else
+            disablePayment();
+    }
+}
+
+function createOrder(data, actions) {
+    return actions.order.create({
+        purchase_units: [{
+            amount: {
+                value: cost
+            },
+            soft_descriptor: "woodriver",
+            description: getDescription(),
+            custom_id: getCustom()
+        }]
+    });
+}
+
+function getBuy() {
+	let p = new URLSearchParams(window.location.search);
+	let v = p.get("buy");
+	v = parseInt(v);
+	tickets = (typeof v === 'number' && !isNaN(v)) ? v : 250;
+		if (tickets == 250) {
+		cost = 25;
+	} else if (tickets == 550) {
+		cost = 50;
+	} else if (tickets == 1250) {
+		cost = 100;
+	} else if (tickets == 2500) {
+		cost = 150;
+	} else {
+		tickets = 250;
+		cost = 25;
+	}
+}
+
+function onApprove(data, actions) {
+	return actions.order.capture().then(function(details) {
+		let transaction = details.purchase_units[0].payments.captures[0].id;
+		window.location.replace("https://woodriverstudio.com/raffle-confirmation/?transaction=" + transaction);
+	});
+}
+
+function enablePayment() {
+	document.querySelector("#pay-pal").innerHTML = "";
+	document.querySelector("#pay-pal").style.display = "block"; 
+	document.querySelector("#pay-blank").style.display = "none";
+ 
+	paypal.Buttons({
+		fundingSource: paypal.FUNDING.PAYPAL,
+		style: {
+			shape: 'pill',
+			color: 'blue',
+			layout: 'vertical',
+			label: 'paypal'
+		},
+		createOrder: createOrder,
+		onApprove: onApprove
+	}).render('#pay-pal');
+}
+
+function disablePayment() {
+	document.querySelector("#pay-pal").style.display = "none"; 
+	document.querySelector("#pay-blank").style.display = "block";
+}
+
+document.getElementById('firstname').addEventListener('input', function() {
+	checkValid();
+});
+
+document.getElementById('lastname').addEventListener('input', function() {
+	checkValid();
+});
+
+document.getElementById('email').addEventListener('input', function() {
+	checkValid();
+});
+
+function initCheckout() {
+	getBuy();
+	document.querySelector("#buying").innerHTML = `<strong>${tickets}</strong> tickets for <strong>$${cost}.00</strong>`;
+	document.querySelector("#pay-details .ticket").innerText = `${tickets}`;
+	document.querySelector("#pay-details .amount").innerText = `$${cost}.00`;
+}
+
+initCheckout();
+
+window.addEventListener('resize', () => {
+	let layout = document.querySelector("#raffle-layout");
+	layout.className = (window.innerWidth > window.innerHeight) ? "desktop" : "mobile";
+});
+
+</script>
